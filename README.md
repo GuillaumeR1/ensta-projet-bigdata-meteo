@@ -1,9 +1,9 @@
 # Présentation
 Ce projet vis à l'optimisation de l'interrogation d'une base de donnée météorologique issue de mété France pour permettre une analyse fine des épisodes de canacile en France. <br/>
 Il se concentre sur les départements :
-- Gironde
-- Bouches du Rhône
-- Rhône <br/>
+- Gironde (33)
+- Bouches du Rhône (13)
+- Rhône (69)<br/>
 
 entre 1970 et 2024. <br/>
 

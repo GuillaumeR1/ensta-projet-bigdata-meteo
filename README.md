@@ -48,5 +48,3 @@ Avro apporte un format sérialisé, typé, adapté à l’échange de données.<
 Parquet est orienté colonnes, donc idéal pour des requêtes qui lisent peu de colonnes sur un gros dataset.</br>
 4. Partitionnement par département / année / mois : 
 Réduit le nombre de fichiers lus.</br>
-
-

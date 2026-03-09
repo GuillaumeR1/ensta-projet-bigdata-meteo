@@ -1,2 +1,14 @@
+# Maven
+target/
 
+# Dataset
+tmp/
+tmp/data/
+
+# IDE
+.vscode/
+.idea/
+
+# Mac
+.DS_Store
 .DS_Store

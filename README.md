@@ -9,7 +9,7 @@ entre 1970 et 2024. <br/>
 
 > Source dataset : https://meteo.data.gouv.fr/datasets/6569b4473bedf2e7abad3b72
 
-## Problématique : comment analyser des séries temporelles de température en France afin d’identifier des tendances, anomalies et canicules suivant la double échelle régionale et temporelle ?
+### Problématique : comment analyser des séries temporelles de température en France afin d’identifier des tendances, anomalies et canicules suivant la double échelle régionale et temporelle ?
 
 ## Justification
 La Gironde est un département couramment concerné par des forte vague de chaleur qui impacte directement l'économique locale en raison de la forte activié viticole et la protection des population en raison des feux de forêt. <br/>
@@ -48,3 +48,16 @@ Avro apporte un format sérialisé, typé, adapté à l’échange de données.<
 Parquet est orienté colonnes, donc idéal pour des requêtes qui lisent peu de colonnes sur un gros dataset.</br>
 4. Partitionnement par département / année / mois : 
 Réduit le nombre de fichiers lus.</br>
+
+## Développement
+### Niveau 1
+Préparation DataSet burt pour un dataset propre et exploitable par SPARK
+.csv -> lecture SPARK et schéma -> Formatage de donnée -> Data prêt pour exploitation
+
+### Niveu 2
+Optimisation via avro pour optimiser la taille de dataset, le temps de lecture et la structure des données.
+
+### Niveau 3
+
+### Niveau 4
+### PIPELINE : .csv -> lecture SPARK et schéma -> Formatage de donnée -> convertion AVRO ->

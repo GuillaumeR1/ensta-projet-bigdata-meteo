@@ -21,6 +21,16 @@ public class TestDataFormat {
         try {
             String inputPath = "tmp/data/*.csv.gz";
 
+            Dataset<Row> dfInspect = spark.read()
+                    .option("header", "true")
+                    .option("sep", ";")
+                    .csv("tmp/data/*.csv.gz");
+
+            System.out.println("===== NOMS RÉELS DES COLONNES =====");
+            for (String c : dfInspect.columns()) {
+                System.out.println(c);
+            }
+
             // Données brutes
             Dataset<Row> dfBrut = spark.read()
                     .option("header", "true")
@@ -42,7 +52,6 @@ public class TestDataFormat {
 
             long count = dfFormate.count();
 
-            System.out.println("\n***** Nombre de ligne totales :");
             System.out.println("Nombre total de lignes : " + count);
 
         } finally {

@@ -10,47 +10,38 @@ public class TestAvro {
     @Test
     public void testAvro() {
 
-        SparkSession spark = SparkSession.builder()
-                .appName("test-avro")
-                .master("local[*]")
-                .getOrCreate();
+    SparkSession spark = SparkSession.builder()
+    .appName("test-avro")
+    .master("local[*]")
+    .getOrCreate();
 
-        spark.sparkContext().setLogLevel("ERROR");
+    spark.sparkContext().setLogLevel("ERROR");
 
-        try {
+    try {
 
-            String inputPath = "tmp/data/*.csv.gz";
-            String outputPath = "output/avro";
+        String csvPath = "tmp/data/*.csv.gz";
+        String avroPath = "output/avro";
 
-            // Lecture CSV
-            Dataset<Row> dfBrut = spark.read()
-                    .option("header", "true")
-                    .option("sep", ";")
-                    .schema(DataSchema.csvSchema())
-                    .csv(inputPath);
+        Dataset<Row> df = Main.runPipeline(spark, csvPath);
 
-            // Formatage
-            Dataset<Row> dfFormate = DataFormatage.formater(dfBrut);
+        System.out.println("\n***** Schéma des données formatées");
+        df.printSchema();
 
-            DataConvertToAvro.writeAvro(dfFormate, outputPath);
+        System.out.println("\n***** Exemple de données");
+        df.show(10, false);
 
-            Dataset<Row> dfAvro = spark.read()
-                    .format("avro")
-                    .load(outputPath);
+        DataConvertToAvro.writeAvro(df, avroPath);
 
-            System.out.println("\n***** Schéma AVRO :");
-            dfAvro.printSchema();
+        Dataset<Row> dfAvro = spark.read()
+        .format("avro")
+        .load(avroPath);
 
-            System.out.println("\n***** Aperçu donnée AVRO :");
-            dfAvro.show(10, false);
+        System.out.println("\n***** Vérification lecture AVRO");
+        dfAvro.show(10, false);
+        System.out.println("\nNombre de lignes AVRO : " + dfAvro.count());
 
-            long count = dfAvro.count();
-
-            System.out.println("Nombre total de lignes : " + count);
-        }
-
-        finally {
-            spark.stop();
-        }
+    } finally {
+        spark.stop();
+    }
     }
 }

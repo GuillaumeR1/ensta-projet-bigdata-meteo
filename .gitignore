@@ -5,6 +5,9 @@ target/
 tmp/
 tmp/data/
 
+# Output
+output/
+
 # IDE
 .vscode/
 .idea/

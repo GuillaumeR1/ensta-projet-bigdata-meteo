@@ -1,5 +1,12 @@
 package bigdatameteo;
 
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
@@ -102,27 +109,36 @@ public class TestPerformance {
     }
 
     private void benchmarkQuery(Dataset<Row> csvQuery, Dataset<Row> avroQuery, Dataset<Row> parquetQuery) {
-        
-        long startCsv = System.nanoTime();
-        csvQuery.show(DISPLAY_ROWS, false);
-        long endCsv = System.nanoTime();
+        final double timeoutSeconds = 60.0;
 
-        long startAvro = System.nanoTime();
-        avroQuery.show(DISPLAY_ROWS, false);
-        long endAvro = System.nanoTime();
+        executeWithTimeout("CSV", csvQuery, timeoutSeconds);
+        executeWithTimeout("AVRO", avroQuery, timeoutSeconds);
+        executeWithTimeout("PARQUET", parquetQuery, timeoutSeconds);
 
-        long startParquet = System.nanoTime();
-        parquetQuery.show(DISPLAY_ROWS, false);
-        long endParquet = System.nanoTime();
-
-        double csvTime = (endCsv - startCsv) / 1_000_000_000.0;
-        double avroTime = (endAvro - startAvro) / 1_000_000_000.0;
-        double parquetTime = (endParquet - startParquet) / 1_000_000_000.0;
-
-        System.out.println("\nCSV time      : " + csvTime + " s");
-        System.out.println("AVRO time     : " + avroTime + " s");
-        System.out.println("PARQUET time  : " + parquetTime + " s");
         System.out.println("\n--------------------------------------\n");
+    }
+
+    private void executeWithTimeout(String label, Dataset<Row> query, double timeoutSeconds) {
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        long start = System.nanoTime();
+        Future<?> future = executor.submit(() -> query.show(DISPLAY_ROWS, false));
+
+        try {
+            future.get((long) (timeoutSeconds * 1000), TimeUnit.MILLISECONDS);
+            long end = System.nanoTime();
+            double duration = (end - start) / 1_000_000_000.0;
+            System.out.println(label + " time      : " + duration + " s\n\n");
+        } catch (TimeoutException e) {
+            future.cancel(true);
+            System.out.println(label + " : Recherche Longue (> " + (long) timeoutSeconds + "s)");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.out.println(label + " : Recherche interrompue");
+        } catch (ExecutionException e) {
+            System.out.println(label + " : Erreur lors de l\'exécution - " + e.getCause());
+        } finally {
+            executor.shutdownNow();
+        }
     }
 
     private Dataset<Row> buildTotalDaysAbove35(Dataset<Row> df) {

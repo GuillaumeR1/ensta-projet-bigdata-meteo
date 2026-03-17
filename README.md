@@ -40,24 +40,7 @@ Le dataset de météo France présente beaucoup de donnée, dont certaines non p
 - Le département contenu dans le nom du fichier </br>
 
 ## Principe d'optimisation
-1. Définir un schéma explicite : 
-Évite l’inférence répétée, stabilise les types, accélère la lecture.</br>
-2. Structuration avec AVRO : 
-Avro apporte un format sérialisé, typé, adapté à l’échange de données.</br>
-3. Format analytique avec PARQUET : 
-Parquet est orienté colonnes, donc idéal pour des requêtes qui lisent peu de colonnes sur un gros dataset.</br>
-4. Partitionnement par département / année / mois : 
-Réduit le nombre de fichiers lus.</br>
+1. Définir un schéma explicite pour SPARK limité aux variables utiles. Les données sont également converties vers des types adaptés afin de faciliter les traitements analytiques.</br>
+2. Les données sont converties en AVRO qui ne nécessite pas de parsing à chaque lecture et réduit le teps d'accès. Amélioration des performance de requête via Spark.</br>
+3. Données stockées en PARQUET optimisé pour l'analytique. Les fichiers sont partitionné en départements et années permettant à SPARK de ire uniquement les fichiers nécessaires.</br>
 
-## Développement
-### Niveau 1
-Préparation DataSet burt pour un dataset propre et exploitable par SPARK
-.csv -> lecture SPARK et schéma -> Formatage de donnée -> Data prêt pour exploitation
-
-### Niveu 2
-Optimisation via avro pour optimiser la taille de dataset, le temps de lecture et la structure des données.
-
-### Niveau 3
-
-### Niveau 4
-### PIPELINE : .csv -> lecture SPARK et schéma -> Formatage de donnée -> convertion AVRO ->

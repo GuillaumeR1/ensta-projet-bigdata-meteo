@@ -26,10 +26,7 @@ public class DataFormatage {
         col("AAAAMMJJHH"),
         col("T"),
         col("TN"),
-        col("TX"),
-        col("QT"),
-        col("QTN"),
-        col("QTX")
+        col("TX")
         );
 
         Dataset<Row> cleaned = selected

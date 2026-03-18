@@ -6,7 +6,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.spark.scheduler.SparkListener;
+import org.apache.spark.scheduler.SparkListenerStageCompleted;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
@@ -27,8 +30,28 @@ import org.junit.jupiter.api.Test;
 
 public class TestPerformance {
 
-    private static final int DISPLAY_ROWS = 200;
+    private static final int  DISPLAY_ROWS = 200;
+    private static final long TIMEOUT_MS   = 60_000L;
 
+    // ═══════════════════════════════════════════════════════════════════
+    // Listener : cumule le CPU Spark réel via executorRunTime
+    // ═══════════════════════════════════════════════════════════════════
+    static class SparkCpuListener extends SparkListener {
+        final AtomicLong sparkCpuMs = new AtomicLong(0);
+
+        @Override
+        public void onStageCompleted(SparkListenerStageCompleted completed) {
+            sparkCpuMs.addAndGet(
+                completed.stageInfo().taskMetrics().executorRunTime()
+            );
+        }
+
+        void reset() { sparkCpuMs.set(0); }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // TESTS
+    // ═══════════════════════════════════════════════════════════════════
     @Test
     public void testBenchmarks() {
 
@@ -39,68 +62,98 @@ public class TestPerformance {
 
         spark.sparkContext().setLogLevel("ERROR");
 
-        String csvPath = "tmp/data/*.csv.gz";
-        String avroPath = "output/avro";
+        SparkCpuListener listener = new SparkCpuListener();
+        spark.sparkContext().addSparkListener(listener);
+
+        String csvPath     = "tmp/data/*.csv.gz";
+        String avroPath    = "output/avro";
         String parquetPath = "output/parquet";
 
         try {
 
-            // Chargement des données CSV
+            // ══════════════════════════════════════════════════════════════
+            // PHASE I/O — chargement unique, affiché une seule fois
+            // Coût fixe à ajouter à la durée totale pour estimer le temps
+            // réel d'une première requête sur données froides
+            // ══════════════════════════════════════════════════════════════
+            System.out.println("\n════════════════════════════════════════════════════════════════");
+            System.out.println("  PHASE I/O — Lecture physique + mise en cache (coût unique)");
+            System.out.println("════════════════════════════════════════════════════════════════");
+
+            // CSV
+            long csvIoStart = System.nanoTime();
             Dataset<Row> dfCsv = Main.runPipeline(spark, csvPath)
                     .withColumn("date", to_date(col("timestamp")));
+            dfCsv.cache();
+            dfCsv.count();
+            double csvIoSec = (System.nanoTime() - csvIoStart) / 1_000_000_000.0;
 
-            // Chargement des données AVRO
+            // AVRO
+            long avroIoStart = System.nanoTime();
             Dataset<Row> dfAvro = spark.read()
                     .format("avro")
                     .load(avroPath)
                     .withColumn("date", to_date(col("timestamp")));
+            dfAvro.cache();
+            dfAvro.count();
+            double avroIoSec = (System.nanoTime() - avroIoStart) / 1_000_000_000.0;
 
-            // Chargement des données PARQUET
+            // PARQUET
+            long parquetIoStart = System.nanoTime();
             Dataset<Row> dfParquet = spark.read()
                     .parquet(parquetPath)
                     .withColumn("date", to_date(col("timestamp")));
+            dfParquet.cache();
+            dfParquet.count();
+            double parquetIoSec = (System.nanoTime() - parquetIoStart) / 1_000_000_000.0;
 
-            // TEST 1
-            System.out.println("\nTEST 1 : nombre total de jours ou T > 35°C");
+            // Affichage récapitulatif I/O
+            System.out.println();
+            System.out.printf("  %-10s Lecture I/O : %.3f s%n", "CSV",     csvIoSec);
+            System.out.printf("  %-10s Lecture I/O : %.3f s%n", "AVRO",    avroIoSec);
+            System.out.printf("  %-10s Lecture I/O : %.3f s%n", "PARQUET", parquetIoSec);
+            System.out.println("════════════════════════════════════════════════════════════════\n");
+
+            // ══════════════════════════════════════════════════════════════
+            // TESTS — données en cache, I/O ne sera plus relue
+            // ══════════════════════════════════════════════════════════════
+
+            System.out.println("TEST 1 : nombre total de jours ou T > 35°C");
             benchmarkQuery(
                     buildTotalDaysAbove35(dfCsv),
                     buildTotalDaysAbove35(dfAvro),
-                    buildTotalDaysAbove35(dfParquet)
+                    buildTotalDaysAbove35(dfParquet),
+                    listener
             );
 
-            // TEST 2
-            System.out.println("\nTEST 2 : jour le plus chaud par departement et annee");
+            System.out.println("TEST 2 : jour le plus chaud par departement et annee");
             benchmarkQuery(
                     buildHottestDayByDepartmentAndYear(dfCsv),
                     buildHottestDayByDepartmentAndYear(dfAvro),
-                    buildHottestDayByDepartmentAndYear(dfParquet)
+                    buildHottestDayByDepartmentAndYear(dfParquet),
+                    listener
             );
 
-            // TEST 3
-            System.out.println("\nTEST 3 : plus longue canicule par departement");
+            System.out.println("TEST 3 : plus longue canicule par departement");
             benchmarkQuery(
                     buildLongestHeatwaveByDepartment(dfCsv),
                     buildLongestHeatwaveByDepartment(dfAvro),
-                    buildLongestHeatwaveByDepartment(dfParquet)
+                    buildLongestHeatwaveByDepartment(dfParquet),
+                    listener
             );
 
-            // TEST 4
-            System.out.println("\nTEST 4 : top 10 jours les plus chauds");
+            System.out.println("TEST 4 : top 10 jours les plus chauds");
             benchmarkQuery(
                     dfCsv.groupBy("departement", "date")
                             .agg(max("t_c").alias("temp_max"))
-                            .orderBy(col("temp_max").desc())
-                            .limit(10),
-
+                            .orderBy(col("temp_max").desc()).limit(10),
                     dfAvro.groupBy("departement", "date")
                             .agg(max("t_c").alias("temp_max"))
-                            .orderBy(col("temp_max").desc())
-                            .limit(10),
-
+                            .orderBy(col("temp_max").desc()).limit(10),
                     dfParquet.groupBy("departement", "date")
                             .agg(max("t_c").alias("temp_max"))
-                            .orderBy(col("temp_max").desc())
-                            .limit(10)
+                            .orderBy(col("temp_max").desc()).limit(10),
+                    listener
             );
 
         } finally {
@@ -108,39 +161,51 @@ public class TestPerformance {
         }
     }
 
-    private void benchmarkQuery(Dataset<Row> csvQuery, Dataset<Row> avroQuery, Dataset<Row> parquetQuery) {
-        final double timeoutSeconds = 60.0;
-
-        executeWithTimeout("CSV", csvQuery, timeoutSeconds);
-        executeWithTimeout("AVRO", avroQuery, timeoutSeconds);
-        executeWithTimeout("PARQUET", parquetQuery, timeoutSeconds);
-
+    private void benchmarkQuery(Dataset<Row> csvQuery,
+                                Dataset<Row> avroQuery,
+                                Dataset<Row> parquetQuery,
+                                SparkCpuListener listener) {
+        executeWithTimeout("CSV",     csvQuery,     listener);
+        executeWithTimeout("AVRO",    avroQuery,    listener);
+        executeWithTimeout("PARQUET", parquetQuery, listener);
         System.out.println("\n--------------------------------------\n");
     }
 
-    private void executeWithTimeout(String label, Dataset<Row> query, double timeoutSeconds) {
+    private void executeWithTimeout(String label,
+                                    Dataset<Row> query,
+                                    SparkCpuListener listener) {
         ExecutorService executor = Executors.newSingleThreadExecutor();
+        listener.reset();
+
         long start = System.nanoTime();
         Future<?> future = executor.submit(() -> query.show(DISPLAY_ROWS, false));
 
         try {
-            future.get((long) (timeoutSeconds * 1000), TimeUnit.MILLISECONDS);
-            long end = System.nanoTime();
-            double duration = (end - start) / 1_000_000_000.0;
-            System.out.println(label + " time      : " + duration + " s\n\n");
+            future.get(TIMEOUT_MS, TimeUnit.MILLISECONDS);
+            double durationSec = (System.nanoTime() - start) / 1_000_000_000.0;
+            long sparkCpuMs = listener.sparkCpuMs.get();
+
+            System.out.printf("%s :%n", label);
+            System.out.printf("  %-20s %.3f s%n", "Durée totale  :", durationSec);
+            System.out.printf("  %-20s %,d ms%n",  "CPU Spark     :", sparkCpuMs);
+            System.out.println();
+
         } catch (TimeoutException e) {
             future.cancel(true);
-            System.out.println(label + " : Recherche Longue (> " + (long) timeoutSeconds + "s)");
+            System.out.println(label + " : Recherche Longue (> " + (TIMEOUT_MS / 1000) + "s)");
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             System.out.println(label + " : Recherche interrompue");
         } catch (ExecutionException e) {
-            System.out.println(label + " : Erreur lors de l\'exécution - " + e.getCause());
+            System.out.println(label + " : Erreur lors de l'exécution - " + e.getCause());
         } finally {
             executor.shutdownNow();
         }
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    // Requêtes métier (inchangées)
+    // ═══════════════════════════════════════════════════════════════════
     private Dataset<Row> buildTotalDaysAbove35(Dataset<Row> df) {
         return df.filter(col("t_c").gt(35))
                 .select("date")

@@ -9,7 +9,7 @@ public class DataConvertToAvro {
 
     public static void writeAvro(Dataset<Row> df, String outputPath) {
 
-        df.repartition(10) // limite le nombre de fichier AVRO
+        df.repartition(8) // limite le nombre de fichier AVRO
         .write()
         .format("avro")
         .mode("overwrite")

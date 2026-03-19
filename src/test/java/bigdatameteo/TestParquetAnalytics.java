@@ -55,8 +55,10 @@ public class TestParquetAnalytics {
         List<Row> longestHeatwaves = ParquetAnalytics.longestHeatwavesByDepartment(dataset).collectAsList();
         Assertions.assertEquals(2, longestHeatwaves.size());
         Assertions.assertEquals("13", longestHeatwaves.get(0).getAs("departement"));
+        Assertions.assertEquals("13001", longestHeatwaves.get(0).getAs("station_id"));
         Assertions.assertEquals(3L, (Long) longestHeatwaves.get(0).getAs("duree_jours"));
         Assertions.assertEquals("33", longestHeatwaves.get(1).getAs("departement"));
+        Assertions.assertEquals("33001", longestHeatwaves.get(1).getAs("station_id"));
         Assertions.assertEquals(4L, (Long) longestHeatwaves.get(1).getAs("duree_jours"));
 
         List<Row> top10 = ParquetAnalytics.top10HottestDays(dataset).collectAsList();

@@ -74,7 +74,7 @@ public class ParquetAnalytics {
     public static Dataset<Row> longestHeatwavesByDepartment(Dataset<Row> parquetDataset) {
         Dataset<Row> heatwaveDays = buildHeatwaveDays(parquetDataset);
 
-        WindowSpec sequenceWindow = Window.partitionBy("departement")
+        WindowSpec sequenceWindow = Window.partitionBy("departement", "station_id")
                 .orderBy(col("date").asc());
 
         Dataset<Row> sequenced = heatwaveDays
@@ -95,7 +95,7 @@ public class ParquetAnalytics {
                 );
 
         Dataset<Row> streaks = sequenced
-                .groupBy("departement", "sequence_id")
+                .groupBy("departement", "station_id", "station_name", "sequence_id")
                 .agg(
                         min("date").alias("date_debut"),
                         max("date").alias("date_fin"),
@@ -111,6 +111,8 @@ public class ParquetAnalytics {
                 .filter(col("rang").equalTo(1))
                 .select(
                         col("departement"),
+                        col("station_id"),
+                        col("station_name"),
                         date_format(col("date_debut"), "yyyy-MM-dd").alias("date_debut"),
                         date_format(col("date_fin"), "yyyy-MM-dd").alias("date_fin"),
                         col("duree_jours")
@@ -133,7 +135,7 @@ public class ParquetAnalytics {
 
     private static Dataset<Row> buildHeatwaveDays(Dataset<Row> parquetDataset) {
         Dataset<Row> dailyIndicators = prepare(parquetDataset)
-                .groupBy("departement", "date")
+                .groupBy("departement", "station_id", "station_name", "date")
                 .agg(
                         max("tx_c").alias("temperature_jour_c"),
                         min("tn_c").alias("temperature_nuit_c")
@@ -155,6 +157,6 @@ public class ParquetAnalytics {
                                 )
                                 .otherwise(false)
                 )
-                .select("departement", "date");
+                .select("departement", "station_id", "station_name", "date");
     }
 }

@@ -13,18 +13,11 @@ import org.apache.spark.scheduler.SparkListenerStageCompleted;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.expressions.Window;
-import org.apache.spark.sql.expressions.WindowSpec;
 import static org.apache.spark.sql.functions.col;
 import static org.apache.spark.sql.functions.count;
-import static org.apache.spark.sql.functions.datediff;
-import static org.apache.spark.sql.functions.lag;
 import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.max;
-import static org.apache.spark.sql.functions.row_number;
-import static org.apache.spark.sql.functions.sum;
 import static org.apache.spark.sql.functions.to_date;
-import static org.apache.spark.sql.functions.when;
 import org.apache.spark.storage.StorageLevel;
 import org.junit.jupiter.api.Test;
 
@@ -149,7 +142,7 @@ public class TestPerformance {
         executeWithTimeout(ParquetAnalytics.heat35FrequencyByDecade(df), listener);
 
         System.out.println("\n  TEST 3 : plus longue canicule par departement");
-        executeWithTimeout(buildLongestHeatwaveByDepartment(df), listener);
+        executeWithTimeout(ParquetAnalytics.longestHeatwavesByDepartment(df), listener);
 
         System.out.println("\n  TEST 4 : top 10 jours les plus chauds");
         executeWithTimeout(
@@ -202,58 +195,4 @@ public class TestPerformance {
                 .agg(count(lit(1)).alias("nb_jours_t_sup_35"));
     }
 
-    private Dataset<Row> buildLongestHeatwaveByDepartment(Dataset<Row> df) {
-        Dataset<Row> caniculeDays = buildHeatwaveDays(df);
-
-        WindowSpec sequenceWindow = Window.partitionBy("departement", "year")
-                .orderBy(col("date"));
-
-        Dataset<Row> sequencedDays = caniculeDays
-                .withColumn("previous_date", lag(col("date"), 1).over(sequenceWindow))
-                .withColumn(
-                        "sequence_start",
-                        when(
-                                col("previous_date").isNull()
-                                        .or(datediff(col("date"), col("previous_date")).notEqual(1)),
-                                1
-                        ).otherwise(0)
-                )
-                .withColumn(
-                        "sequence_id",
-                        sum("sequence_start").over(
-                                sequenceWindow.rowsBetween(Window.unboundedPreceding(), Window.currentRow())
-                        )
-                );
-
-        Dataset<Row> streaks = sequencedDays
-                .groupBy("departement", "year", "sequence_id")
-                .agg(count(lit(1)).alias("nb_jours_canicule"));
-
-        WindowSpec longestHeatwaveWindow = Window.partitionBy("departement")
-                .orderBy(col("nb_jours_canicule").desc(), col("year").asc());
-
-        return streaks
-                .withColumn("rn", row_number().over(longestHeatwaveWindow))
-                .filter(col("rn").equalTo(1))
-                .select(
-                        col("departement"),
-                        col("year").alias("annee"),
-                        col("nb_jours_canicule")
-                )
-                .orderBy(col("departement"));
-    }
-
-    private Dataset<Row> buildHeatwaveDays(Dataset<Row> df) {
-        return df.filter(
-                        when(col("departement").equalTo("13"),
-                                col("tx_c").gt(35).and(col("tn_c").gt(24)))
-                                .when(col("departement").equalTo("33"),
-                                        col("tx_c").gt(35).and(col("tn_c").gt(21)))
-                                .when(col("departement").equalTo("69"),
-                                        col("tx_c").gt(34).and(col("tn_c").gt(20)))
-                                .otherwise(false)
-                )
-                .select("departement", "year", "date")
-                .distinct();
-    }
 }

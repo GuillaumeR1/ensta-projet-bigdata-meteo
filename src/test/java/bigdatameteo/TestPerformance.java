@@ -17,7 +17,6 @@ import org.apache.spark.sql.expressions.Window;
 import org.apache.spark.sql.expressions.WindowSpec;
 import static org.apache.spark.sql.functions.col;
 import static org.apache.spark.sql.functions.count;
-import static org.apache.spark.sql.functions.date_format;
 import static org.apache.spark.sql.functions.datediff;
 import static org.apache.spark.sql.functions.lag;
 import static org.apache.spark.sql.functions.lit;
@@ -142,8 +141,8 @@ public class TestPerformance {
         System.out.println("\n  TEST 1 : nombre total de jours ou T > 35°C");
         executeWithTimeout(buildTotalDaysAbove35(df), listener);
 
-        System.out.println("\n  TEST 2 : jour le plus chaud par departement et annee");
-        executeWithTimeout(buildHottestDayByDepartmentAndYear(df), listener);
+        System.out.println("\n  TEST 2 : evolution de la frequence des temperatures >= 35 C par decennie");
+        executeWithTimeout(ParquetAnalytics.heat35FrequencyByDecade(df), listener);
 
         System.out.println("\n  TEST 3 : plus longue canicule par departement");
         executeWithTimeout(buildLongestHeatwaveByDepartment(df), listener);
@@ -197,25 +196,6 @@ public class TestPerformance {
                 .select("date")
                 .distinct()
                 .agg(count(lit(1)).alias("nb_jours_t_sup_35"));
-    }
-
-    private Dataset<Row> buildHottestDayByDepartmentAndYear(Dataset<Row> df) {
-        Dataset<Row> dailyMax = df.groupBy("departement", "year", "date")
-                .agg(max("tx_c").alias("tmax"));
-
-        WindowSpec hottestDayWindow = Window.partitionBy("departement", "year")
-                .orderBy(col("tmax").desc(), col("date").asc());
-
-        return dailyMax
-                .withColumn("rn", row_number().over(hottestDayWindow))
-                .filter(col("rn").equalTo(1))
-                .select(
-                        col("year").alias("annee"),
-                        col("departement"),
-                        date_format(col("date"), "dd-MM").alias("jour"),
-                        col("tmax")
-                )
-                .orderBy(col("annee"), col("departement"));
     }
 
     private Dataset<Row> buildLongestHeatwaveByDepartment(Dataset<Row> df) {

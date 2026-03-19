@@ -79,25 +79,13 @@
             </plugin>
 
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.2.5</version>
-                <configuration>
-                    <argLine>
-                        --add-opens java.base/sun.nio.ch=ALL-UNNAMED
-                    </argLine>
-                </configuration>
-            </plugin>
-
-            <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.6.3</version>
                 <configuration>
                     <mainClass>bigdatameteo.Main</mainClass>
                     <arguments>
-                        <argument>--add-opens</argument>
-                        <argument>java.base/sun.nio.ch=ALL-UNNAMED</argument>
+                        <argument>output/parquet</argument>
                     </arguments>
                 </configuration>
             </plugin>

@@ -6,14 +6,17 @@ import org.apache.spark.sql.expressions.Window;
 import org.apache.spark.sql.expressions.WindowSpec;
 
 import static org.apache.spark.sql.functions.col;
+import static org.apache.spark.sql.functions.coalesce;
 import static org.apache.spark.sql.functions.count;
 import static org.apache.spark.sql.functions.date_format;
 import static org.apache.spark.sql.functions.datediff;
+import static org.apache.spark.sql.functions.expr;
 import static org.apache.spark.sql.functions.lag;
 import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.max;
 import static org.apache.spark.sql.functions.min;
 import static org.apache.spark.sql.functions.row_number;
+import static org.apache.spark.sql.functions.round;
 import static org.apache.spark.sql.functions.sum;
 import static org.apache.spark.sql.functions.to_date;
 import static org.apache.spark.sql.functions.when;
@@ -40,16 +43,32 @@ public class ParquetAnalytics {
                 .orderBy(col("temperature_c").desc(), col("timestamp").asc());
     }
 
-    public static Dataset<Row> strongHeatDaysByDepartmentAndYear(Dataset<Row> parquetDataset) {
-        Dataset<Row> dailyMax = prepare(parquetDataset)
-                .groupBy("departement", "year", "date")
-                .agg(max("t_c").alias("temperature_max_c"));
+    public static Dataset<Row> heat35FrequencyByDecade(Dataset<Row> parquetDataset) {
+        Dataset<Row> prepared = prepare(parquetDataset)
+                .withColumn("decennie", expr("CAST(FLOOR(year / 10) * 10 AS INT)"));
 
-        return dailyMax
-                .filter(col("temperature_max_c").geq(35.0))
-                .groupBy("departement", "year")
-                .agg(count(lit(1)).alias("nb_jours_forte_chaleur"))
-                .orderBy(col("departement").asc(), col("year").asc());
+        Dataset<Row> totalReadings = prepared
+                .groupBy("decennie")
+                .agg(count(lit(1)).alias("nb_releves_total"));
+
+        Dataset<Row> hotReadings = prepared
+                .filter(col("t_c").geq(35.0))
+                .groupBy("decennie")
+                .agg(count(lit(1)).alias("nb_releves_ge_35c"));
+
+        return totalReadings
+                .join(hotReadings, new String[]{"decennie"}, "left")
+                .na().fill(0, new String[]{"nb_releves_ge_35c"})
+                .withColumn(
+                        "frequence_releves_ge_35c_pct",
+                        round(
+                                col("nb_releves_ge_35c")
+                                        .multiply(100.0)
+                                        .divide(coalesce(col("nb_releves_total"), lit(1))),
+                                2
+                        )
+                )
+                .orderBy(col("decennie").asc());
     }
 
     public static Dataset<Row> longestHeatwavesByDepartment(Dataset<Row> parquetDataset) {

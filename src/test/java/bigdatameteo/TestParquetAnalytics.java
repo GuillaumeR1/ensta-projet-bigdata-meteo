@@ -42,11 +42,12 @@ public class TestParquetAnalytics {
         Assertions.assertEquals(9, hotHourlyReadings.size());
         Assertions.assertEquals(42.0, hotHourlyReadings.get(0).getAs("temperature_c"));
 
-        List<Row> strongHeatDays = ParquetAnalytics.strongHeatDaysByDepartmentAndYear(dataset).collectAsList();
-        Assertions.assertEquals(3, strongHeatDays.size());
-        Assertions.assertEquals(3L, (Long) strongHeatDays.get(0).getAs("nb_jours_forte_chaleur"));
-        Assertions.assertEquals(4L, (Long) strongHeatDays.get(1).getAs("nb_jours_forte_chaleur"));
-        Assertions.assertEquals(2L, (Long) strongHeatDays.get(2).getAs("nb_jours_forte_chaleur"));
+        List<Row> frequencyByDecade = ParquetAnalytics.heat35FrequencyByDecade(dataset).collectAsList();
+        Assertions.assertEquals(1, frequencyByDecade.size());
+        Assertions.assertEquals(2020, (Integer) frequencyByDecade.get(0).getAs("decennie"));
+        Assertions.assertEquals(10L, (Long) frequencyByDecade.get(0).getAs("nb_releves_total"));
+        Assertions.assertEquals(9L, (Long) frequencyByDecade.get(0).getAs("nb_releves_ge_35c"));
+        Assertions.assertEquals(90.0, ((Number) frequencyByDecade.get(0).getAs("frequence_releves_ge_35c_pct")).doubleValue());
 
         List<Row> longestHeatwaves = ParquetAnalytics.longestHeatwavesByDepartment(dataset).collectAsList();
         Assertions.assertEquals(2, longestHeatwaves.size());

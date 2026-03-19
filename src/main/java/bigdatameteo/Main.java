@@ -35,8 +35,8 @@ public class Main {
             System.out.println("\n=== Releves horaires chauds (T >= 35 C) ===");
             ParquetAnalytics.hotHourlyReadings(parquetDataset).show(200, false);
 
-            System.out.println("\n=== Nombre de jours de forte chaleur par departement et par annee ===");
-            ParquetAnalytics.strongHeatDaysByDepartmentAndYear(parquetDataset).show(200, false);
+            System.out.println("\n=== Evolution de la frequence des temperatures >= 35 C au fil des decennies ===");
+            ParquetAnalytics.heat35FrequencyByDecade(parquetDataset).show(200, false);
 
             System.out.println("\n=== Periodes de canicule les plus longues par departement ===");
             ParquetAnalytics.longestHeatwavesByDepartment(parquetDataset).show(200, false);

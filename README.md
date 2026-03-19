@@ -21,7 +21,7 @@ Le Rhône, dont la métropole de Lyon, fortement urbanisé représente un îlot 
 ## Périmètre
 Dans le cadre de ce projet, nous nous intéressons à répondre aux questions types suivantes : <br/>
 - Retrouver tous les relevés horaires chauds où T >= 35°C 
-- Compter les jours de forte chaleur par département et par année
+- Comment évolue la fréquence des températures >= 35°C (températures caniculaires) au fil des décennies ?
 - Trouver les périodes de canicules les plus long par département 
 - Top 10 des journées les plus chaudes <br/>
 

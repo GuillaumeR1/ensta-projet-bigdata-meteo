@@ -9,12 +9,10 @@ public class DataConvertToParquet {
     }
 
     public static void writeParquet(Dataset<Row> df, String outputPath) {
-
-        Dataset<Row> repartitioned = df.repartition(4, df.col("departement"), df.col("year"));
-
-        repartitioned.write()
-                .mode("overwrite")
-                .partitionBy("departement", "year")
-                .parquet(outputPath);
+        df.coalesce(1)
+            .write()
+            .mode("overwrite")
+            .option("compression", "zstd")
+            .parquet(outputPath);
     }
 }

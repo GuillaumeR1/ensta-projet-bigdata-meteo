@@ -26,6 +26,7 @@ import static org.apache.spark.sql.functions.row_number;
 import static org.apache.spark.sql.functions.sum;
 import static org.apache.spark.sql.functions.to_date;
 import static org.apache.spark.sql.functions.when;
+import org.apache.spark.storage.StorageLevel;
 import org.junit.jupiter.api.Test;
 
 public class TestPerformance {
@@ -52,6 +53,9 @@ public class TestPerformance {
         SparkSession spark = SparkSession.builder()
                 .appName("benchmark-meteo")
                 .master("local[*]")
+                .config("spark.driver.memory", "4g")
+                .config("spark.sql.shuffle.partitions", "4")
+                .config("spark.sql.inMemoryColumnarStorage.compressed", "false")
                 .getOrCreate();
 
         spark.sparkContext().setLogLevel("ERROR");
@@ -75,7 +79,7 @@ public class TestPerformance {
             long csvIoStart = System.nanoTime();
             Dataset<Row> dfCsv = Main.runPipeline(spark, csvPath)
                     .withColumn("date", to_date(col("timestamp")));
-            dfCsv.cache();
+            dfCsv.persist(StorageLevel.MEMORY_ONLY());
             dfCsv.count();
             double csvIoSec = (System.nanoTime() - csvIoStart) / 1_000_000_000.0;
 
@@ -98,7 +102,7 @@ public class TestPerformance {
                     .format("avro")
                     .load(avroPath)
                     .withColumn("date", to_date(col("timestamp")));
-            dfAvro.cache();
+            dfAvro.persist(StorageLevel.MEMORY_ONLY());
             dfAvro.count();
             double avroIoSec = (System.nanoTime() - avroIoStart) / 1_000_000_000.0;
 
@@ -119,7 +123,7 @@ public class TestPerformance {
             Dataset<Row> dfParquet = spark.read()
                     .parquet(parquetPath)
                     .withColumn("date", to_date(col("timestamp")));
-            dfParquet.cache();
+            dfParquet.persist(StorageLevel.MEMORY_ONLY());
             dfParquet.count();
             double parquetIoSec = (System.nanoTime() - parquetIoStart) / 1_000_000_000.0;
 

@@ -24,6 +24,9 @@ public class Main {
 
         SparkSession spark = SparkSession.builder()
                 .appName("parquet-meteo-analytics")
+                .config("spark.driver.memory", "4g")
+                .config("spark.sql.shuffle.partitions", "4")
+                .config("spark.sql.inMemoryColumnarStorage.compressed", "false")
                 .master("local[*]")
                 .getOrCreate();
 

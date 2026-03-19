@@ -13,6 +13,9 @@ public class TestParquet {
         SparkSession spark = SparkSession.builder()
                 .appName("test-parquet")
                 .master("local[*]")
+                .config("spark.driver.memory", "4g")
+                .config("spark.sql.shuffle.partitions", "4")
+                .config("spark.sql.inMemoryColumnarStorage.compressed", "false")
                 .getOrCreate();
 
         spark.sparkContext().setLogLevel("ERROR");

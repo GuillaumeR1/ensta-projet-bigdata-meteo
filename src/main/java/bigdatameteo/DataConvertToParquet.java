@@ -9,7 +9,7 @@ public class DataConvertToParquet {
     }
 
     public static void writeParquet(Dataset<Row> df, String outputPath) {
-        df.coalesce(1)
+        df.coalesce(4)
             .write()
             .mode("overwrite")
             .option("compression", "zstd")

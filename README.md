@@ -48,26 +48,36 @@ Le dataset de météo France présente beaucoup de donnée, dont certaines non p
 
 #### Lecture Spark sur csv
 Dans notre cas d'étude, il y a 18 fichiers .csv.gz pour 566 MB
-|      |Temps lecture I/O|Temps requête 1|Temps requête 2|Temps requête 3|Temps requête 4|
-|:----:|:----------------|:--------------|:--------------|:--------------|:--------------|
-|Test 1||||||
-|Test 2||||||
-|Test 3||||||
+|        |Temps lecture I/O|Temps requête 1|Temps requête 2|Temps requête 3|Temps requête 4|
+|:------:|:----------------|:--------------|:--------------|:--------------|:--------------|
+|18 c/ 4 |Test 1 : 96.415 s<br>Test 2 : 113.859 s<br>Test 3 : 103.753 s|Test 1 : 1.794 s<br>Test 2 : 2.316 s<br>Test 3 : 1.561 s|Test 1 : 2.999 s<br>Test 2 : 4.852 s<br>Test 3 : 3.759 s|Test 1 : 8.882 s<br>Test 2 : 12.133 s<br>Test 3 : 9.644 s|Test 1 : 3.210 s<br>Test 2 : 2.485 s<br>Test 3 : 2.381 s|
+|18 c/ 8 |Test 1 : <br>Test 2 : <br>Test 3 : <br>|Test 1 : <br>Test 2 : <br>Test 3 : <br>|Test 1 : <br>Test 2 : <br>Test 3 : <br>|Test 1 : <br>Test 2 : <br>Test 3 : <br>|Test 1 : <br>Test 2 : <br>Test 3 : <br>|
+|18 c/ 18|Test 1 : <br>Test 2 : <br>Test 3 : <br>|Test 1 : <br>Test 2 : <br>Test 3 : <br>|Test 1 : <br>Test 2 : <br>Test 3 : <br>|Test 1 : <br>Test 2 : <br>Test 3 : <br>|Test 1 : <br>Test 2 : <br>Test 3 : <br>|
 
 En plus du format d'optimisation, chaque test sont effectués en modifiant le paramètre du nombre de fichiers Avro et Parquet créés.</br>
 - 18, pour avoir le même nombre de fichiers que dans le dataset inital
 - 4 et 8 déterminer en fonction du nombre de coeur disponible sur la machine de teste
 
 #### Lecture Spark sur Avro
+Temps de génération de fichiers Avro :
+- 4 fichiers en 5 min 26 sec
+- 8 fichiers en xx
+- 18 fichiers en xx
+
 |N fichiers|Taille|Temps lecture I/O|Temps requête 1|Temps requête 2|Temps requête 3|Temps requête 4|
 |:---------|:----:|:----------------|:--------------|:--------------|:--------------|:--------------|
-|4         ||||||
+|4         |473 MB|Test 1 : 31.048 s <br>Test 2 : 54.653 s<br>Test 3 : 33.826 s|Test 1 : 1.824 s<br>Test 2 : 1.639 s<br>Test 3 : 0.722 s|Test 1 : 1.298 s<br>Test 2 : 2.593 s<br>Test 3 : 1.473 s|Test 1 : 9.976 s<br>Test 2 : 14.769 s<br>Test 3 : 8.711 s|Test 1 : 2.190 s<br>Test 2 : 2.845 s<br>Test 3 : 2.508 s|
 |8         |406 MB|||||
 |18        ||||||
 #### Lecture Spark sur Parquet
+Temps de génération de fichiers Parquer :
+- 4 fichiers en 1 min 58 sec
+- 8 fichiers en xx
+- 18 fichiers en xx
+
 |N fichiers|Taille|Temps lecture I/O|Temps requête 1|Temps requête 2|Temps requête 3|Temps requête 4|
 |:---------|:----:|:----------------|:--------------|:--------------|:--------------|:--------------|
-|4         |60 MB |||||
+|4         |62 MB |Test 1 : 17.581 s<br>Test 2 : 19.428 s<br>Test 3 : 16.338 s|Test 1 : 1.150 s<br>Test 2 : 0.594 s<br>Test 3 : 1.281 s|Test 1 : 1.631 s<br>Test 2 : 1.309 s<br>Test 3 : 1.060 s|Test 1 : 8.013 s<br>Test 2 : 6.075 s<br>Test 3 : 5.469 s|Test 1 : 1.361 s<br>Test 2 : 1.215 s<br>Test 3 : 1.981 s|
 |8         ||||||
 |18        ||||||
 

@@ -60,7 +60,7 @@ En plus du format d'optimisation, chaque test sont effectués en modifiant le pa
 
 #### Lecture Spark sur Avro
 Temps de génération de fichiers Avro :
-- 4 fichiers en 5 min 26 sec
+- 4 fichiers en 3 min 26 sec
 - 8 fichiers en xx
 - 18 fichiers en xx
 

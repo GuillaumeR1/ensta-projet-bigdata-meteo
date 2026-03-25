@@ -1,5 +1,5 @@
 # Présentation
-Ce projet vis à l'optimisation de l'interrogation d'une base de donnée météorologique issue de mété France pour permettre une analyse fine des épisodes de canacile en France. <br/>
+Ce projet vise à l'optimisation de l'interrogation d'une base de donnée météorologique issue de mété France pour permettre une analyse fine des épisodes de canacile en France. <br/>
 Il se concentre sur les départements :
 - Gironde (33)
 - Bouches du Rhône (13)
@@ -41,6 +41,38 @@ Le dataset de météo France présente beaucoup de donnée, dont certaines non p
 
 ## Principe d'optimisation
 1. Définir un schéma explicite pour SPARK limité aux variables utiles. Les données sont également converties vers des types adaptés afin de faciliter les traitements analytiques.</br>
-2. Les données sont converties en AVRO qui ne nécessite pas de parsing à chaque lecture et réduit le teps d'accès. Amélioration des performance de requête via Spark.</br>
-3. Données stockées en PARQUET optimisé pour l'analytique. Les fichiers sont partitionné en départements et années permettant à SPARK de ire uniquement les fichiers nécessaires.</br>
+2. Les données sont converties en AVRO qui ne nécessite pas de parsing à chaque lecture et réduit le temps d'accès. Amélioration des performance de requête via Spark.</br>
+3. Données stockées en PARQUET optimisé pour l'analytique. Les fichiers sont partitionné en départements et années permettant à SPARK de lire uniquement les fichiers nécessaires.</br>
 
+## Benchmark de comparaison des performances
+
+#### Lecture Spark sur csv
+Dans notre cas d'étude, il y a 18 fichiers .csv.gz pour 566 MB
+|      |Temps lecture I/O|Temps requête 1|Temps requête 2|Temps requête 3|Temps requête 4|
+|:----:|:----------------|:--------------|:--------------|:--------------|:--------------|
+|Test 1||||||
+|Test 2||||||
+|Test 3||||||
+
+En plus du format d'optimisation, chaque test sont effectués en modifiant le paramètre du nombre de fichiers Avro et Parquet créés.</br>
+- 18, pour avoir le même nombre de fichiers que dans le dataset inital
+- 4 et 8 déterminer en fonction du nombre de coeur disponible sur la machine de teste
+
+#### Lecture Spark sur Avro
+|N fichiers|Taille|Temps lecture I/O|Temps requête 1|Temps requête 2|Temps requête 3|Temps requête 4|
+|:---------|:----:|:----------------|:--------------|:--------------|:--------------|:--------------|
+|4         ||||||
+|8         |406 MB|||||
+|18        ||||||
+#### Lecture Spark sur Parquet
+|N fichiers|Taille|Temps lecture I/O|Temps requête 1|Temps requête 2|Temps requête 3|Temps requête 4|
+|:---------|:----:|:----------------|:--------------|:--------------|:--------------|:--------------|
+|4         |60 MB |||||
+|8         ||||||
+|18        ||||||
+
+## Bilan et limites
+> à faire
+
+# Pour aller plus loin
+> à faire

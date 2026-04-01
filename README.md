@@ -89,3 +89,14 @@ Les temps de requête correspondent au temps de calcule de la requête sur les d
 
 # Pour aller plus loin
 > à faire
+
+# Reproduction
+## Dépendances
+> Java 17</br>
+> Spark 3.5.x
+
+## Setup
+1. Télécharger le repot git
+2. Créer un dossier tmp/data, et y télécharger les fichiers data sur le site donnée au début
+3. Exécuter les classes TestAvro.java et TestParquet.java
+4. Eécuter TestParquetnalytics.java ou TestPerformance.java

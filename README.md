@@ -85,10 +85,64 @@ Lecture I/O correspond au temps nécessaire pour lire physiquement le fichier de
 Les temps de requête correspondent au temps de calcule de la requête sur les données en mémoire
 
 ## Bilan et limites
-> à faire
+Ce projet permet de montrer qu'un pipeline Spark simple peut déjà apporter un gain net sur une volumétrie météo réelle, à condition de bien choisir le format de stockage et de simplifier les données en amont.
+
+### Bilan sur les formats de lecture Spark
+- Le CSV est le point d'entrée le plus simple, mais c'est aussi le plus coûteux à exploiter. La lecture est pénalisée par le parsing texte, la décompression des `.csv.gz` et les conversions de type. Il reste utile pour l'ingestion brute, mais peu adapté à des traitements analytiques répétés.
+- L'AVRO constitue un premier niveau d'optimisation. On supprime le parsing CSV à chaque lecture et on obtient des temps d'accès plus faibles que sur le brut. En revanche, le gain reste limité pour l'analytique pure, car le format est moins favorable que Parquet aux lectures sélectives et aux agrégations.
+- Le PARQUET est le format le plus efficace dans notre cas. Les fichiers sont beaucoup plus compacts, la lecture I/O est plus courte et les requêtes analytiques sont globalement les plus stables. Le format colonnaire est particulièrement pertinent pour des requêtes qui ne mobilisent qu'une partie des colonnes (pour le choix que nous avons fait de nous limiter aux températures pour la définition totale d'une canicule)
+- Le partitionnement Parquet par département et année améliore aussi la lecture ciblée : Spark peut éviter de scanner une partie des données quand le filtre correspond aux partitions.
+- Le benchmark montre donc une hiérarchie claire pour ce projet : CSV pour l'ingestion, AVRO pour une étape intermédiaire sérialisée et PARQUET pour l'analyse.
+
+### Bilan sur les choix faits dans le projet
+- Le projet se concentre sur trois départements. Ce choix réduit le volume traité et permet de construire un prototype lisible, mais il limite la portée nationale des résultats.
+- Nous avons retenu un sous-ensemble de variables principalement centré sur la température (`T`, `TN`, `TX`) afin de répondre rapidement aux questions analytiques retenues.
+- La détection de canicule repose sur des seuils fixes par département et sur une durée minimale de 3 jours consécutifs. Cette modélisation rend le traitement simple à implémenter et à expliquer.
+- Le pipeline de préparation filtre les lignes incomplètes sur `T`, `TN` et `TX`, transforme les types, reconstruit la date et dérive le département à partir de l'identifiant de station. Cela rend les requêtes plus simples et plus rapides par la suite.
+- Les tests de performance montrent aussi qu'augmenter le nombre de fichiers ne garantit pas un gain systématique. Il existe un compromis entre parallélisme, coût d'ordonnancement Spark et taille des partitions.
+
+### Limites des considérations métier
+- La canicule n'est pas définie uniquement par la température. D'autres variables peuvent jouer un rôle important dans l'impact réel d'un épisode chaud : humidité, vent, rayonnement, durée d'exposition, persistance nocturne, densité urbaine ou vulnérabilité locale.
+- Le projet assimile en partie la chaleur extrême à un seuil thermique fixe. Or, en pratique, les seuils de vigilance et les niveaux d'alerte peuvent évoluer selon les référentiels, les territoires et les années.
+- Les seuils utilisés sont départementaux, alors que l'exposition réelle peut varier fortement à l'intérieur d'un même département selon l'altitude, la proximité maritime ou l'effet d'îlot de chaleur urbain.
+- La logique actuelle retient la station la plus marquante par département pour la plus longue canicule. Cela simplifie le résultat, mais ne produit pas un indicateur agrégé à l'échelle du département entier.
+- Le traitement ignore la dimension populationnelle et sanitaire : un épisode chaud détecté météorologiquement n'a pas nécessairement le même impact selon la zone concernée.
+
+### Limites techniques et méthodologiques
+- Le benchmark est réalisé sur une machine locale en mode `local[*]`. Les résultats sont donc utiles pour comparer les formats dans ce contexte, mais ils ne représentent pas directement un cluster distribué.
+- Les temps mesurés dépendent du cache, du nombre de coeurs disponibles, du nombre de fichiers, de l'état du disque et de l'exécution précédente. Ils doivent être interprétés comme des ordres de grandeur, pas comme des valeurs absolues universelles.
+- La phase "lecture I/O" n'est pas strictement la même selon les formats : pour le CSV, elle inclut aussi le parsing, la décompression et une partie du pipeline de transformation, ce qui rend la comparaison utile mais pas parfaitement symétrique.
+- Le schéma n'est pas imposé à la lecture CSV dans `Main.runPipeline`, alors qu'un schéma explicite est défini dans le projet. Cela laisse une marge d'amélioration sur la robustesse et la reproductibilité.
+- Les lignes incomplètes sont supprimées. Cette décision simplifie les calculs, mais elle peut exclure certaines périodes ou stations et introduire un biais si les valeurs manquantes ne sont pas réparties uniformément.
+
+### Difficultés rencontrées
+- La volumétrie initiale et la présence de fichiers compressés rendent les premiers temps de lecture coûteux, en particulier sur CSV.
+- Les données météo brutes contiennent beaucoup de colonnes dont seules quelques-unes sont réellement utiles pour les analyses visées ; il a donc fallu faire un travail de sélection et de normalisation.
+- Le passage d'une logique de relevés horaires à une logique d'épisodes de canicule sur plusieurs jours demande des agrégations intermédiaires et une gestion explicite des séquences de dates consécutives.
+- Le réglage du nombre de partitions/fichiers n'est pas trivial : trop peu de fichiers réduit le parallélisme, trop de fichiers augmente l'overhead Spark.
+- La comparaison de performances entre formats demande de bien distinguer coût de génération, coût de lecture, coût de mise en cache et coût de requête, sans quoi l'interprétation des résultats peut être trompeuse.
 
 # Pour aller plus loin
-> à faire
+### Améliorations métier
+- Faire varier la définition de la canicule au lieu d'utiliser un seuil fixe unique. Une première extension naturelle consiste à intégrer des seuils annuels ou saisonniers ou à charger des seuils externes versionnés par année et par territoire.
+- Intégrer d'autres variables explicatives que la seule température : humidité, vent, pression, rayonnement, durée des nuits chaudes ou indicateurs composites de chaleur ressentie.
+- Construire un indice plus réaliste de canicule ou de stress thermique, par exemple à partir d'une combinaison `TX`, `TN`, persistance sur plusieurs jours et humidité.
+- Passer d'une logique par station à une logique réellement départementale, en agrégeant les stations d'un même territoire avec une stratégie explicite.
+- Mieux distinguer chaleur ponctuelle, vague de chaleur et canicule selon des règles métier paramétrables.
+
+### Améliorations techniques
+- Utiliser systématiquement un schéma Spark explicite dès la lecture CSV pour réduire l'ambiguïté sur les types et améliorer la robustesse du pipeline.
+- Externaliser les seuils de canicule dans un fichier de configuration ou une table de référence plutôt que de les coder en dur dans `ParquetAnalytics`.
+- Ajouter des tests automatiques sur la qualité des données : taux de valeurs manquantes, doublons, distribution par station, continuité temporelle.
+- Étendre les benchmarks avec des moyennes, médianes et écarts-types, afin de mieux quantifier la variabilité observée entre essais.
+- Tester d'autres stratégies de partitionnement et de `shuffle partitions`, voire un partitionnement plus fin selon les requêtes réellement exécutées.
+- Comparer la lecture "cold" et "warm" cache de manière plus formelle pour séparer l'effet du stockage de l'effet mémoire.
+
+### Perspectives possibles
+- Étendre l'analyse à davantage de départements, voire à tout le territoire, afin de comparer littoral, zones urbaines, zones rurales et relief.
+- Ajouter une dimension cartographique ou temporelle interactive pour visualiser l'évolution des épisodes chauds.
+- Croiser les résultats météo avec d'autres sources ouvertes, par exemple des données démographiques, sanitaires ou énergétiques, afin d'évaluer l'impact des canicules au-delà de la seule mesure physique.
+- Étudier l'évolution des épisodes extrêmes à différentes échelles temporelles : année, décennie, saison, voire avant/après certaines ruptures climatiques observables.
 
 # Reproduction
 ## Dépendances
